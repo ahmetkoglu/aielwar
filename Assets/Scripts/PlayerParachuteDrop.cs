@@ -1,4 +1,5 @@
 using UnityEngine;
+using TMPro;
 
 /// <summary>
 /// Handles a battle-royale style player drop: start high in the sky, open a visible parachute with a key,
@@ -26,6 +27,11 @@ public class PlayerParachuteDrop : MonoBehaviour
     [SerializeField] private bool beginDropOnStart;
     [SerializeField, Min(5f)] private float dropHeight = 85f;
     [SerializeField] private Vector3 horizontalDropOffset = Vector3.zero;
+
+    [Header("Parachute Prompt UI")]
+    [SerializeField] private TextMeshProUGUI parachutePromptText;
+    [SerializeField] private string promptMessage = "PARAŞÜT AÇMAK İÇİN\n[F] BASINIZ";
+    [SerializeField, Min(5f)] private float promptShowHeight = 60f;
 
     [Header("Input")]
     [SerializeField] private KeyCode openParachuteKey = KeyCode.F;
@@ -142,6 +148,8 @@ public class PlayerParachuteDrop : MonoBehaviour
         HideParachute();
         SetWindEmission(freefallWindEmission);
         StartWindAudio(freefallWindVolume);
+        CreatePromptTextIfNeeded();
+        SetPromptVisible(false);
 
         if (startUiToHide != null)
         {
@@ -162,6 +170,7 @@ public class PlayerParachuteDrop : MonoBehaviour
         SetWindEmission(parachuteWindEmission);
         SetWindAudioVolume(parachuteWindVolume);
         PlayParachuteOpenSound();
+        SetPromptVisible(false);
     }
 
     private void UpdateDropMovement()
@@ -204,6 +213,8 @@ public class PlayerParachuteDrop : MonoBehaviour
         Vector3 velocity = horizontalVelocity + Vector3.down * descentSpeed;
         CollisionFlags flags = characterController.Move(velocity * Time.deltaTime);
 
+        UpdatePromptText(groundDistance);
+
         if ((flags & CollisionFlags.Below) != 0 || groundDistance <= 0.25f)
         {
             FinishLanding();
@@ -228,6 +239,8 @@ public class PlayerParachuteDrop : MonoBehaviour
             Destroy(parachuteInstance, 0.65f);
             parachuteInstance = null;
         }
+
+        SetPromptVisible(false);
     }
 
     private bool WasOpenParachutePressed()
@@ -425,6 +438,57 @@ public class PlayerParachuteDrop : MonoBehaviour
         if (parachuteAudioSource != null && parachuteOpenClip != null)
         {
             parachuteAudioSource.PlayOneShot(parachuteOpenClip, parachuteOpenVolume);
+        }
+    }
+
+    private void CreatePromptTextIfNeeded()
+    {
+        if (parachutePromptText != null)
+        {
+            return;
+        }
+
+        Canvas canvas = FindAnyObjectByType<Canvas>();
+        if (canvas == null)
+        {
+            return;
+        }
+
+        GameObject promptObj = new GameObject("Parachute Prompt");
+        promptObj.transform.SetParent(canvas.transform, false);
+
+        RectTransform rect = promptObj.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(400f, 120f);
+
+        parachutePromptText = promptObj.AddComponent<TextMeshProUGUI>();
+        parachutePromptText.text = promptMessage;
+        parachutePromptText.color = Color.white;
+        parachutePromptText.alignment = TextAlignmentOptions.Center;
+        parachutePromptText.fontSize = 28f;
+        parachutePromptText.fontStyle = FontStyles.Bold;
+        parachutePromptText.enableAutoSizing = false;
+    }
+
+    private void UpdatePromptText(float groundDistance)
+    {
+        if (parachutePromptText == null || state != DropState.Freefall)
+        {
+            return;
+        }
+
+        bool shouldShow = groundDistance <= promptShowHeight && groundDistance > autoOpenHeight;
+        SetPromptVisible(shouldShow);
+    }
+
+    private void SetPromptVisible(bool visible)
+    {
+        if (parachutePromptText != null)
+        {
+            parachutePromptText.gameObject.SetActive(visible);
         }
     }
 }

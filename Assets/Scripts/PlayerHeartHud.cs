@@ -36,6 +36,7 @@ public class PlayerHeartHud : MonoBehaviour
         if (playerHealth != null)
         {
             playerHealth.OnDamaged.AddListener(HandleHealthChanged);
+            playerHealth.OnHealed.AddListener(Refresh);
             Refresh(true);
         }
     }
@@ -45,6 +46,7 @@ public class PlayerHeartHud : MonoBehaviour
         if (playerHealth != null)
         {
             playerHealth.OnDamaged.RemoveListener(HandleHealthChanged);
+            playerHealth.OnHealed.RemoveListener(Refresh);
         }
     }
 

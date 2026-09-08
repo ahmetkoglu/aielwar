@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -67,6 +68,11 @@ public class AdvancedFpsController : MonoBehaviour
     [SerializeField, Min(0.05f)] private float crouchStepInterval = 0.55f;
     [SerializeField, Min(0f)] private float footstepPitchRandomness = 0.08f;
 
+    [Header("Damage Slow Effect")]
+    [SerializeField, Min(0f)] private float damageSlowDuration = 0.25f;
+    [SerializeField, Min(0f)] private float damageSlowMultiplier = 0.5f;
+    [SerializeField] private bool enableDamageSlow = true;
+
     [Header("Debug")]
     [SerializeField] private bool logMovementState;
 
@@ -89,6 +95,14 @@ public class AdvancedFpsController : MonoBehaviour
     private float lastSlideEndTime = -999f;
     private float nextFootstepTime;
 
+    // Damage slow
+    private Health playerHealth;
+    private float originalWalkSpeed;
+    private float originalSprintSpeed;
+    private float originalCrouchSpeed;
+    private Coroutine damageSlowRoutine;
+    private float damageSlowTimer;
+
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
@@ -105,6 +119,26 @@ public class AdvancedFpsController : MonoBehaviour
         if (playerCamera != null)
         {
             defaultCameraLocalY = playerCamera.transform.localPosition.y;
+        }
+
+        // Cache original speed values
+        originalWalkSpeed = walkSpeed;
+        originalSprintSpeed = sprintSpeed;
+        originalCrouchSpeed = crouchSpeed;
+
+        // Subscribe to damage events
+        playerHealth = GetComponent<Health>();
+        if (playerHealth != null)
+        {
+            playerHealth.OnDamaged.AddListener(OnPlayerDamaged);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (playerHealth != null)
+        {
+            playerHealth.OnDamaged.RemoveListener(OnPlayerDamaged);
         }
     }
 
@@ -348,6 +382,46 @@ public class AdvancedFpsController : MonoBehaviour
         }
 
         return true;
+    }
+
+    private void OnPlayerDamaged(DamageInfo damageInfo)
+    {
+        if (!enableDamageSlow)
+        {
+            return;
+        }
+
+        // Start or restart the damage slow coroutine
+        if (damageSlowRoutine != null)
+        {
+            StopCoroutine(damageSlowRoutine);
+        }
+
+        damageSlowRoutine = StartCoroutine(DamageSlowRoutine());
+    }
+
+    private IEnumerator DamageSlowRoutine()
+    {
+        damageSlowTimer = damageSlowDuration;
+
+        // Apply slow multiplier
+        walkSpeed = originalWalkSpeed * damageSlowMultiplier;
+        sprintSpeed = originalSprintSpeed * damageSlowMultiplier;
+        crouchSpeed = originalCrouchSpeed * damageSlowMultiplier;
+
+        // Wait for duration
+        while (damageSlowTimer > 0f)
+        {
+            damageSlowTimer -= Time.deltaTime;
+            yield return null;
+        }
+
+        // Restore original speeds
+        walkSpeed = originalWalkSpeed;
+        sprintSpeed = originalSprintSpeed;
+        crouchSpeed = originalCrouchSpeed;
+
+        damageSlowRoutine = null;
     }
 
     private void HandleMovement()

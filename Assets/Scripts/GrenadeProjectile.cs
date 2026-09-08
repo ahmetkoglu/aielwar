@@ -26,9 +26,17 @@ public class GrenadeProjectile : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float explosionVolume = 0.95f;
     [SerializeField, Min(0.1f)] private float explosionAudioLifetime = 2f;
 
+    [Header("Hit Feedback")]
+    [SerializeField] private HitFeedbackUi hitFeedbackUi;
+
     private GameObject attacker;
     private bool hasExploded;
     private float explodeTime;
+
+    public void SetHitFeedbackUi(HitFeedbackUi ui)
+    {
+        hitFeedbackUi = ui;
+    }
 
     public void Initialize(GameObject grenadeAttacker, float customFuseTime, float customDamage, float customRadius, float customForce, GameObject customExplosionFx)
     {
@@ -161,6 +169,12 @@ public class GrenadeProjectile : MonoBehaviour
 
             damageable.TakeDamage(damageInfo);
             damagedTargets.Add(damageable);
+
+            // Show grenade hit feedback on the player if the attacker is the player
+            if (hitFeedbackUi != null && attacker != null && attacker.CompareTag("Player"))
+            {
+                hitFeedbackUi.ShowGrenadeHit(finalDamage, closestPoint);
+            }
         }
     }
 

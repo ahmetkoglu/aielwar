@@ -31,9 +31,9 @@ public class EnemyChaseAttack : MonoBehaviour
     [SerializeField, Min(0f)] private float waitAtPatrolPoint = 0.75f;
 
     [Header("Detection")]
-    [SerializeField, Min(0f)] private float detectionRadius = 22f;
-    [SerializeField, Range(1f, 360f)] private float fieldOfViewAngle = 120f;
-    [SerializeField, Min(0f)] private float loseTargetDelay = 3f;
+    [SerializeField, Min(0f)] private float detectionRadius = 80f;
+    [SerializeField, Range(1f, 360f)] private float fieldOfViewAngle = 360f;
+    [SerializeField, Min(0f)] private float loseTargetDelay = 4f;
     [SerializeField] private LayerMask lineOfSightLayers = ~0;
     [SerializeField] private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
     [SerializeField] private Vector3 eyeOffset = new Vector3(0f, 1.55f, 0f);
@@ -105,11 +105,53 @@ public class EnemyChaseAttack : MonoBehaviour
         {
             agent.stoppingDistance = stoppingDistance;
             agent.speed = patrolSpeed;
+            agent.acceleration = 25f;
+            agent.angularSpeed = 720f;
         }
 
         SetupFireAudioSourceIfNeeded();
 
         ChangeState(EnemyState.Patrol);
+    }
+
+    private void OnEnable()
+    {
+        if (health != null)
+        {
+            health.OnDamaged.AddListener(OnDamagedByTarget);
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (health != null)
+        {
+            health.OnDamaged.RemoveListener(OnDamagedByTarget);
+        }
+    }
+
+    private void OnDamagedByTarget(DamageInfo damageInfo)
+    {
+        if (currentState == EnemyState.Dead || target == null)
+        {
+            return;
+        }
+
+        // Immediately enter combat state when damaged
+        // Set the attacker as the target if we don't have one
+        if (target == null && damageInfo.Attacker != null)
+        {
+            target = damageInfo.Attacker.transform;
+        }
+
+        lastSeenTargetPosition = target.position;
+        lastTimeSawTarget = Time.time;
+        CanSeeTarget = HasLineOfSight(GetEyePosition(), target.position + targetAimOffset, target);
+
+        if (currentState != EnemyState.Combat)
+        {
+            ChangeState(EnemyState.Combat);
+        }
     }
 
     private void Start()
@@ -169,9 +211,12 @@ public class EnemyChaseAttack : MonoBehaviour
 
     private void UpdateTargetVisibility()
     {
-        CanSeeTarget = false;
-
         if (target == null)
+        {
+            return;
+        }
+
+        if (currentState == EnemyState.Dead)
         {
             return;
         }
@@ -183,19 +228,16 @@ public class EnemyChaseAttack : MonoBehaviour
 
         if (distance > detectionRadius)
         {
+            CanSeeTarget = false;
             LoseTargetIfNeeded();
             return;
         }
 
-        float angle = Vector3.Angle(transform.forward, toTarget.normalized);
-        if (angle > fieldOfViewAngle * 0.5f)
-        {
-            LoseTargetIfNeeded();
-            return;
-        }
-
+        // No field of view angle check - enemy sees in all directions (360°)
+        // But still requires line of sight
         if (!HasLineOfSight(origin, aimPoint, target))
         {
+            CanSeeTarget = false;
             LoseTargetIfNeeded();
             return;
         }

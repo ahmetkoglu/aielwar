@@ -34,14 +34,25 @@ public class HitFeedbackUi : MonoBehaviour
     [SerializeField] private string killMessage = "KILL";
     [SerializeField, Min(0.05f)] private float killTextDuration = 0.55f;
 
+    [Header("Grenade Hit")]
+    [SerializeField] private TMP_Text grenadeHitTextPrefab;
+    [SerializeField] private string grenadeHitMessage = "GRENADE";
+    [SerializeField] private Color grenadeHitColor = new Color(1f, 0.5f, 0f, 1f);
+    [SerializeField, Min(0.05f)] private float grenadeHitDuration = 0.7f;
+    [SerializeField, Min(1f)] private float grenadeHitScale = 1.35f;
+    [SerializeField] private Vector2 grenadeHitStartOffset = new Vector2(0f, -20f);
+    [SerializeField] private Vector2 grenadeHitDrift = new Vector2(0f, -35f);
+
     [Header("Audio")]
     [SerializeField] private AudioSource audioSource;
     [SerializeField] private AudioClip normalHitClip;
     [SerializeField] private AudioClip criticalHitClip;
     [SerializeField] private AudioClip killClip;
+    [SerializeField] private AudioClip grenadeHitClip;
     [SerializeField, Range(0f, 1f)] private float normalHitVolume = 0.55f;
     [SerializeField, Range(0f, 1f)] private float criticalHitVolume = 0.65f;
     [SerializeField, Range(0f, 1f)] private float killVolume = 0.8f;
+    [SerializeField, Range(0f, 1f)] private float grenadeHitVolume = 0.7f;
 
     private Image[] markerImages;
     private Coroutine markerRoutine;
@@ -93,6 +104,75 @@ public class HitFeedbackUi : MonoBehaviour
 
             killRoutine = StartCoroutine(KillTextRoutine());
         }
+    }
+
+    /// <summary>
+    /// Shows a grenade hit feedback: "GRENADE" text with damage number and hit marker.
+    /// </summary>
+    public void ShowGrenadeHit(float damageAmount, Vector3 worldPosition)
+    {
+        if (!referencesReady)
+        {
+            CacheReferences();
+        }
+
+        if (!referencesReady)
+        {
+            return;
+        }
+
+        // Play grenade hit sound
+        if (audioSource != null && grenadeHitClip != null)
+        {
+            audioSource.PlayOneShot(grenadeHitClip, grenadeHitVolume);
+        }
+
+        // Show hit marker in grenade color
+        if (markerRoutine != null)
+        {
+            StopCoroutine(markerRoutine);
+        }
+        markerRoutine = StartCoroutine(HitMarkerRoutine(grenadeHitColor, grenadeHitScale));
+
+        // Show damage number
+        StartCoroutine(DamageNumberRoutine(Mathf.RoundToInt(damageAmount), grenadeHitColor, true));
+
+        // Show grenade hit text
+        StartCoroutine(GrenadeHitTextRoutine());
+    }
+
+    private IEnumerator GrenadeHitTextRoutine()
+    {
+        if (grenadeHitTextPrefab == null)
+        {
+            yield break;
+        }
+
+        TMP_Text text = Instantiate(grenadeHitTextPrefab, grenadeHitTextPrefab.transform.parent);
+        text.gameObject.SetActive(true);
+        text.text = grenadeHitMessage;
+        text.color = grenadeHitColor;
+        text.fontSize = criticalDamageFontSize;
+        text.rectTransform.anchoredPosition = grenadeHitStartOffset;
+        text.rectTransform.localScale = Vector3.one * grenadeHitScale;
+
+        Vector2 start = grenadeHitStartOffset;
+        Vector2 end = start + grenadeHitDrift;
+        float elapsed = 0f;
+
+        while (elapsed < grenadeHitDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / grenadeHitDuration);
+            float eased = EaseOutCubic(t);
+            text.rectTransform.anchoredPosition = Vector2.Lerp(start, end, eased);
+            Color faded = grenadeHitColor;
+            faded.a = Mathf.Lerp(1f, 0f, t);
+            text.color = faded;
+            yield return null;
+        }
+
+        Destroy(text.gameObject);
     }
 
     private IEnumerator HitMarkerRoutine(Color color, float scale)
@@ -182,6 +262,11 @@ public class HitFeedbackUi : MonoBehaviour
 
         markerImages = hitMarkerRoot.GetComponentsInChildren<Image>(true);
         damageNumberPrefab.gameObject.SetActive(false);
+
+        if (grenadeHitTextPrefab != null)
+        {
+            grenadeHitTextPrefab.gameObject.SetActive(false);
+        }
     }
 
     private void PlayHitSound(bool isCritical, bool isKill)

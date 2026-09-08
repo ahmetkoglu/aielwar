@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Events;
 
 /// <summary>
 /// Spawns XP orbs and optional loot prefabs when the attached Health dies.
@@ -7,6 +8,10 @@ using UnityEngine;
 [RequireComponent(typeof(Health))]
 public class EnemyDeathDrops : MonoBehaviour
 {
+    [Header("Events")]
+    [SerializeField] private bool notifyScoreManagerOnDeath = true;
+    public UnityEvent OnKilled;
+
     [Header("XP Orb")]
     [SerializeField] private GameObject xpOrbPrefab;
     [SerializeField, Min(0)] private int xpAmount = 10;
@@ -48,6 +53,11 @@ public class EnemyDeathDrops : MonoBehaviour
         hasDropped = true;
         SpawnXpOrb();
         TrySpawnLootDrop();
+
+        if (notifyScoreManagerOnDeath)
+        {
+            OnKilled?.Invoke();
+        }
     }
 
     private void SpawnXpOrb()

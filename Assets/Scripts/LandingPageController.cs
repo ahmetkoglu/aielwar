@@ -4,6 +4,7 @@ using UnityEngine;
 /// <summary>
 /// Simple main/landing page controller for the demo scene.
 /// Shows a top-down island camera and menu UI until START is pressed, then starts the parachute drop.
+/// Disables all enemies and wave spawner while on the menu.
 /// </summary>
 public class LandingPageController : MonoBehaviour
 {
@@ -30,6 +31,8 @@ public class LandingPageController : MonoBehaviour
     private Quaternion menuCameraStartRotation;
     private FpsWeaponController[] playerWeapons;
     private PlayerGrenadeThrower[] grenadeThrowers;
+    private EnemyChaseAttack[] allEnemies;
+    private WaveSpawner waveSpawner;
     private bool gameStarted;
 
     private void Awake()
@@ -54,6 +57,9 @@ public class LandingPageController : MonoBehaviour
             playerWeapons = playerController.GetComponentsInChildren<FpsWeaponController>(true);
             grenadeThrowers = playerController.GetComponentsInChildren<PlayerGrenadeThrower>(true);
         }
+
+        allEnemies = FindObjectsByType<EnemyChaseAttack>(FindObjectsSortMode.None);
+        waveSpawner = FindObjectOfType<WaveSpawner>();
 
         if (menuCamera != null)
         {
@@ -109,6 +115,7 @@ public class LandingPageController : MonoBehaviour
         playerController?.SetMovementLocked(true);
         SetWeaponsEnabled(false);
         SetGrenadeThrowersEnabled(false);
+        SetAllEnemiesEnabled(false);
 
         if (landingPageRoot != null)
         {
@@ -163,6 +170,7 @@ public class LandingPageController : MonoBehaviour
         Cursor.visible = false;
         SetWeaponsEnabled(true);
         SetGrenadeThrowersEnabled(true);
+        SetAllEnemiesEnabled(true);
 
         if (parachuteDrop != null)
         {
@@ -216,6 +224,25 @@ public class LandingPageController : MonoBehaviour
             {
                 grenadeThrowers[i].enabled = enabled;
             }
+        }
+    }
+
+    private void SetAllEnemiesEnabled(bool enabled)
+    {
+        if (allEnemies != null)
+        {
+            for (int i = 0; i < allEnemies.Length; i++)
+            {
+                if (allEnemies[i] != null)
+                {
+                    allEnemies[i].enabled = enabled;
+                }
+            }
+        }
+
+        if (waveSpawner != null)
+        {
+            waveSpawner.enabled = enabled;
         }
     }
 

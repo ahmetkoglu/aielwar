@@ -15,6 +15,7 @@ public class Health : MonoBehaviour, IDamageable
     [Header("Events")]
     public UnityEvent<DamageInfo> OnDamaged;
     public UnityEvent<DamageInfo> OnDied;
+    public UnityEvent OnHealed;
 
     public float MaxHealth => maxHealth;
     public float CurrentHealth { get; private set; }
@@ -26,6 +27,7 @@ public class Health : MonoBehaviour, IDamageable
     {
         OnDamaged ??= new UnityEvent<DamageInfo>();
         OnDied ??= new UnityEvent<DamageInfo>();
+        OnHealed ??= new UnityEvent();
         CurrentHealth = maxHealth;
     }
 
@@ -53,6 +55,7 @@ public class Health : MonoBehaviour, IDamageable
         }
 
         CurrentHealth = Mathf.Min(maxHealth, CurrentHealth + amount);
+        OnHealed?.Invoke();
     }
 
     public void ResetHealth()

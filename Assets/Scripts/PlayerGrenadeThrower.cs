@@ -11,6 +11,7 @@ public class PlayerGrenadeThrower : MonoBehaviour
     [SerializeField] private GameObject grenadePrefab;
     [SerializeField] private Transform handPoint;
     [SerializeField] private GameObject explosionFxPrefab;
+    [SerializeField] private HitFeedbackUi hitFeedbackUi;
 
     [Header("Audio")]
     [SerializeField] private AudioClip explosionClip;
@@ -35,6 +36,9 @@ public class PlayerGrenadeThrower : MonoBehaviour
     [SerializeField] private bool hideWeaponsWhileHoldingGrenade = true;
     [SerializeField] private FpsWeaponController[] weaponsToHide;
 
+    [Header("Weapon Switcher Integration")]
+    [SerializeField] private WeaponSwitcher weaponSwitcher;
+
     [Header("Grenade Stats")]
     [SerializeField, Min(0.05f)] private float fuseTime = 2.4f;
     [SerializeField, Min(0f)] private float explosionDamage = 65f;
@@ -44,6 +48,8 @@ public class PlayerGrenadeThrower : MonoBehaviour
     private GameObject previewGrenade;
     private float nextThrowTime;
     private bool isHoldingGrenade;
+
+    public bool IsHoldingGrenade => isHoldingGrenade;
 
     private void Awake()
     {
@@ -55,6 +61,11 @@ public class PlayerGrenadeThrower : MonoBehaviour
         if (weaponsToHide == null || weaponsToHide.Length == 0)
         {
             weaponsToHide = GetComponentsInChildren<FpsWeaponController>(true);
+        }
+
+        if (weaponSwitcher == null)
+        {
+            weaponSwitcher = GetComponent<WeaponSwitcher>();
         }
 
         if ((handPoint == null || IsWeaponTransform(handPoint)) && playerCamera != null)
@@ -106,7 +117,7 @@ public class PlayerGrenadeThrower : MonoBehaviour
 
         SpawnThrownGrenade();
         HidePreviewGrenade();
-        SetWeaponsVisible(true);
+        RestoreLastWeapon();
         isHoldingGrenade = false;
         nextThrowTime = Time.time + throwCooldown;
     }
@@ -194,6 +205,7 @@ public class PlayerGrenadeThrower : MonoBehaviour
         projectile.enabled = true;
         projectile.Initialize(gameObject, fuseTime, explosionDamage, explosionRadius, explosionForce, explosionFxPrefab);
         projectile.SetExplosionAudio(explosionClip, explosionVolume);
+        projectile.SetHitFeedbackUi(hitFeedbackUi);
 
         body.linearVelocity = playerCamera.transform.forward.normalized * throwVelocity;
         body.AddTorque(Random.insideUnitSphere * spinTorque, ForceMode.VelocityChange);
@@ -201,7 +213,30 @@ public class PlayerGrenadeThrower : MonoBehaviour
 
     private void SetWeaponsVisible(bool visible)
     {
-        if (!hideWeaponsWhileHoldingGrenade || weaponsToHide == null)
+        if (!hideWeaponsWhileHoldingGrenade)
+        {
+            return;
+        }
+
+        if (visible)
+        {
+            RestoreLastWeapon();
+        }
+        else
+        {
+            HideAllWeapons();
+        }
+    }
+
+    private void HideAllWeapons()
+    {
+        if (weaponSwitcher != null)
+        {
+            weaponSwitcher.HideAllWeapons();
+            return;
+        }
+
+        if (weaponsToHide == null)
         {
             return;
         }
@@ -210,7 +245,29 @@ public class PlayerGrenadeThrower : MonoBehaviour
         {
             if (weaponsToHide[i] != null)
             {
-                weaponsToHide[i].gameObject.SetActive(visible);
+                weaponsToHide[i].gameObject.SetActive(false);
+            }
+        }
+    }
+
+    private void RestoreLastWeapon()
+    {
+        if (weaponSwitcher != null)
+        {
+            weaponSwitcher.RestoreLastWeapon();
+            return;
+        }
+
+        if (weaponsToHide == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < weaponsToHide.Length; i++)
+        {
+            if (weaponsToHide[i] != null)
+            {
+                weaponsToHide[i].gameObject.SetActive(true);
             }
         }
     }

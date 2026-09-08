@@ -337,6 +337,23 @@ public class FpsWeaponController : MonoBehaviour
         UpdateAmmoText();
     }
 
+    /// <summary>
+    /// Fully refills the magazine and sets reserve ammo to a high value.
+    /// Used by WaveSpawner when a wave is completed.
+    /// </summary>
+    public void RefillAmmo()
+    {
+        CurrentAmmoInMagazine = magazineSize;
+        CurrentReserveAmmo = Mathf.Max(CurrentReserveAmmo, startingReserveAmmo * 2);
+        
+        if (IsReloading)
+        {
+            IsReloading = false;
+        }
+        
+        UpdateAmmoText();
+    }
+
     public void SetAmmoText(TMP_Text targetAmmoText)
     {
         ammoText = targetAmmoText;
